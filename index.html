@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level Design Editor v2 - Clean UI</title>
+    <title>Level Design Editor v2 - Simplified Items</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .grid-container {
@@ -17,11 +17,29 @@
             gap: 0;
             position: relative;
             box-sizing: content-box;
+            z-index: 1;
+            overflow: hidden;
         }
+
+        /* 배경 이미지 전용 레이어 */
+        .grid-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+            opacity: var(--bg-opacity, 1);
+            background-image: var(--bg-image, none);
+            pointer-events: none;
+        }
+
         .tile {
             width: 40px;
             height: 40px;
-            background-color: white;
+            background-color: transparent;
             cursor: crosshair;
             display: flex;
             align-items: center;
@@ -34,10 +52,9 @@
             word-break: break-all;
             line-height: 1.1;
             padding: 2px;
+            border: 0.5px solid rgba(0, 0, 0, 0.05);
         }
-        .editing-mode .tile {
-            outline: 0.1px solid rgba(0,0,0,0.05);
-        }
+        
         .active-tool {
             outline: 3px solid #3b82f6 !important;
             transform: scale(1.05);
@@ -54,41 +71,52 @@
             z-index: 20;
         }
 
-        /* 가로 요소 (상단 테두리) */
         .tile::before { right: 0; height: 0; }
         .has-thin-h-wall::before { border-top: 4px solid #000; }
         .has-thin-h-door-open::before { border-top: 5px double #000; }
         .has-thin-h-door-locked::before { border-top: 5px double #ff4d4d; }
         .has-thin-h-window::before { border-top: 3px dashed #666; }
 
-        /* 세로 요소 (좌측 테두리) */
         .tile::after { bottom: 0; width: 0; }
         .has-thin-v-wall::after { border-left: 4px solid #000; }
         .has-thin-v-door-open::after { border-left: 5px double #000; }
         .has-thin-v-door-locked::after { border-left: 5px double #ff4d4d; }
         .has-thin-v-window::after { border-left: 3px dashed #666; }
 
+        /* --- 아이템 레이어 수정: 무늬 제거 및 둥근 사각형 디자인 --- */
+        .item-layer {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            right: 4px;
+            bottom: 4px;
+            z-index: 30;
+            pointer-events: none;
+            border-radius: 8px; /* 모서리 둥글게 */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+
+        /* 확정 아이템 (하늘색 사각형) */
+        .has-item-fixed .item-layer { 
+            background-color: rgba(160, 216, 239, 0.9);
+            border: 2px solid #8ecae6;
+        }
+        
+        /* 기억 조각 (분홍색 사각형) */
+        .has-item-memory .item-layer { 
+            background-color: rgba(255, 173, 173, 0.9);
+            border: 2px solid #ff9999;
+        }
+
         /* --- 타일 타입별 스타일 --- */
         .tile-shelf { background-color: #d2a679; }
         .tile-dirt { background-color: #7a5c3f; }
-        .tile-wall { background-color: #000; }
+        .tile-wall { background-color: #000; border-color: #333; }
         .tile-water { background-color: #778fcc; }
         .tile-leaves { background-color: #6d7a5f; }
         .tile-hydrangea { background-color: rgb(203, 203, 255); border: 1px dashed rgba(0,0,0,0.1); }
         
-        .item-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 5;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .tile-fixed-item .item-icon { background-color: #a0d8ef; }
-        .tile-memory .item-icon { background-color: #ffadad; }
-
         .preview-rect {
             position: absolute;
             background-color: rgba(59, 130, 246, 0.3);
@@ -98,7 +126,6 @@
             display: none;
         }
 
-        /* 도구 버튼 기본 스타일 통일 */
         .tool-btn {
             background-color: white;
             transition: all 0.2s;
@@ -114,10 +141,10 @@
         <header class="mb-6 flex justify-between items-end">
             <div>
                 <h1 class="text-2xl font-bold text-slate-800">레벨 디자인 에디터 v2</h1>
-                <p class="text-sm text-slate-500 mt-1">도구 디자인 통일 | Ctrl+Z: 실행 취소</p>
+                <p class="text-sm text-slate-500 mt-1">도구 디자인 통일 | Ctrl+Z: 실행 취소 | 아이템 중첩 가능</p>
             </div>
-            <div class="flex gap-2 text-sm">
-                <button id="undoBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition">
+            <div class="flex items-center gap-2 text-sm">
+                <button id="undoBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition text-slate-700">
                     실행 취소 (Ctrl+Z)
                 </button>
                 <button id="clearBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition text-red-500 font-semibold">
@@ -195,13 +222,13 @@
                 </div>
 
                 <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">아이템</h3>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">아이템 (사각형 레이어)</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="fixed-item">
-                            <div class="w-8 h-8 bg-[#a0d8ef] rounded flex items-center justify-center text-[10px]">★</div><span class="text-xs">확정 아이템</span>
+                            <div class="w-8 h-8 bg-[#a0d8ef] rounded-md border border-[#8ecae6]"></div><span class="text-xs">확정 아이템</span>
                         </button>
                         <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="memory">
-                            <div class="w-8 h-8 bg-[#ffadad] rounded flex items-center justify-center text-[10px]">♥</div><span class="text-xs">기억 조각</span>
+                            <div class="w-8 h-8 bg-[#ffadad] rounded-md border border-[#ff9999]"></div><span class="text-xs">기억 조각</span>
                         </button>
                     </div>
                 </div>
@@ -221,9 +248,37 @@
                 </div>
             </aside>
 
-            <main class="flex-1 flex justify-center py-4 bg-slate-200 rounded-3xl overflow-hidden shadow-inner border-8 border-white relative min-h-[700px]">
-                <div id="grid" class="grid-container editing-mode">
-                    <div id="preview" class="preview-rect"></div>
+            <main class="flex-1 flex flex-col items-center gap-6">
+                <div class="p-4 bg-slate-200 rounded-3xl shadow-inner border-8 border-white relative min-h-[640px] flex items-center justify-center">
+                    <div id="grid" class="grid-container editing-mode">
+                        <div class="grid-background" id="gridBgLayer"></div>
+                        <div id="preview" class="preview-rect"></div>
+                    </div>
+                </div>
+
+                <div class="w-[632px] bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">배경 이미지 설정</h3>
+                        <div class="flex gap-2">
+                            <input type="file" id="bgUpload" class="hidden" accept="image/*">
+                            <button onclick="document.getElementById('bgUpload').click()" class="bg-blue-50 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition text-xs text-blue-700 font-bold">
+                                이미지 불러오기
+                            </button>
+                            <button id="removeBgBtn" class="bg-red-50 border border-red-200 hover:bg-red-100 px-3 py-1.5 rounded-lg transition text-xs text-red-700 font-bold">
+                                이미지 제거
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 border-l border-slate-100 pl-4 min-w-[200px]">
+                        <div class="flex flex-col flex-1 gap-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-slate-500">투명도 조절</span>
+                                <span id="opacityVal" class="text-[10px] font-bold text-blue-600">100%</span>
+                            </div>
+                            <input type="range" id="bgOpacity" min="0" max="1" step="0.01" value="1" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -232,6 +287,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         const grid = document.getElementById('grid');
+        const gridBgLayer = document.getElementById('gridBgLayer');
         const previewRect = document.getElementById('preview');
         const toolBtns = document.querySelectorAll('.tool-btn');
         const downloadBtn = document.getElementById('downloadBtn');
@@ -239,6 +295,10 @@
         const undoBtn = document.getElementById('undoBtn');
         const customTextInput = document.getElementById('customText');
         const customColorInput = document.getElementById('customColor');
+        const bgUpload = document.getElementById('bgUpload');
+        const bgOpacityInput = document.getElementById('bgOpacity');
+        const opacityVal = document.getElementById('opacityVal');
+        const removeBgBtn = document.getElementById('removeBgBtn');
 
         let currentTool = 'wall';
         let isDragging = false;
@@ -251,18 +311,12 @@
         const GRID_SIZE = 15;
         const TILE_SIZE = 40;
 
-        const icons = {
-            'fixed-item': `<svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
-            'memory': `<svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
-        };
-
         function saveHistory() {
             const state = tiles.map(tile => ({
                 type: tile.dataset.type,
-                overlays: Array.from(tile.classList).filter(c => c.startsWith('has-thin-')),
+                overlays: Array.from(tile.classList).filter(c => c.startsWith('has-')),
                 text: tile.innerText,
-                bgColor: tile.style.backgroundColor,
-                html: tile.innerHTML
+                bgColor: tile.style.backgroundColor
             }));
             history.push(state);
             if (history.length > MAX_HISTORY) history.shift();
@@ -278,16 +332,27 @@
                 tile.dataset.type = s.type;
                 tile.innerText = s.text;
                 tile.style.backgroundColor = s.bgColor;
-                if (s.html) tile.innerHTML = s.html;
-                if (s.type !== 'custom' && !s.html.includes('svg')) {
-                    if (s.type !== 'empty') tile.classList.add(`tile-${s.type}`);
+                if (s.type !== 'custom' && s.type !== 'empty') {
+                    tile.classList.add(`tile-${s.type}`);
+                }
+                
+                if (s.overlays.some(c => c.startsWith('has-item'))) {
+                    if (!tile.querySelector('.item-layer')) {
+                        const layer = document.createElement('div');
+                        layer.className = 'item-layer';
+                        tile.appendChild(layer);
+                    }
+                } else {
+                    tile.querySelector('.item-layer')?.remove();
                 }
             });
         }
 
         function initGrid() {
             const previewEl = document.getElementById('preview');
+            const bgLayerEl = document.getElementById('gridBgLayer');
             grid.innerHTML = '';
+            grid.appendChild(bgLayerEl);
             grid.appendChild(previewEl);
             tiles = [];
             
@@ -322,9 +387,9 @@
         window.addEventListener('mouseup', (e) => {
             if (isDragging && e.button === 0) {
                 isDragging = false;
-                const targetX = e.target.dataset ? parseInt(e.target.dataset.x ?? startX) : startX;
-                const targetY = e.target.dataset ? parseInt(e.target.dataset.y ?? startY) : startY;
-                applyToolToRect(getRect(startX, startY, targetX, targetY));
+                const targetX = e.target.closest('.tile')?.dataset.x ?? startX;
+                const targetY = e.target.closest('.tile')?.dataset.y ?? startY;
+                applyToolToRect(getRect(startX, startY, parseInt(targetX), parseInt(targetY)));
                 previewRect.style.display = 'none';
             }
         });
@@ -349,7 +414,7 @@
                 const tx = parseInt(tile.dataset.x);
                 const ty = parseInt(tile.dataset.y);
                 if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
-                    if (currentTool.startsWith('thin-')) {
+                    if (currentTool.startsWith('thin-') || currentTool === 'fixed-item' || currentTool === 'memory') {
                         toggleOverlay(tile, currentTool);
                     } else {
                         setTileBaseState(tile, currentTool);
@@ -359,35 +424,57 @@
         }
 
         function toggleOverlay(tile, tool) {
-            const prefix = tool.startsWith('thin-h') ? 'has-thin-h-' : 'has-thin-v-';
-            const suffix = tool.replace('thin-h-', '').replace('thin-v-', '');
-            const className = prefix + suffix;
-            const currentOverlays = Array.from(tile.classList).filter(c => c.startsWith(prefix));
-            currentOverlays.forEach(c => tile.classList.remove(c));
-            if (!currentOverlays.includes(className)) {
+            let className = '';
+            if (tool.startsWith('thin-h')) {
+                className = 'has-thin-h-' + tool.replace('thin-h-', '');
+            } else if (tool.startsWith('thin-v')) {
+                className = 'has-thin-v-' + tool.replace('thin-v-', '');
+            } else if (tool === 'fixed-item') {
+                className = 'has-item-fixed';
+            } else if (tool === 'memory') {
+                className = 'has-item-memory';
+            }
+
+            if (tile.classList.contains(className)) {
+                tile.classList.remove(className);
+                if (!tile.classList.contains('has-item-fixed') && !tile.classList.contains('has-item-memory')) {
+                    tile.querySelector('.item-layer')?.remove();
+                }
+            } else {
+                if (className === 'has-item-fixed') tile.classList.remove('has-item-memory');
+                if (className === 'has-item-memory') tile.classList.remove('has-item-fixed');
+                
                 tile.classList.add(className);
+                
+                if (className.startsWith('has-item')) {
+                    if (!tile.querySelector('.item-layer')) {
+                        const layer = document.createElement('div');
+                        layer.className = 'item-layer';
+                        tile.appendChild(layer);
+                    }
+                }
             }
         }
 
         function setTileBaseState(tile, type) {
-            const overlays = Array.from(tile.classList).filter(c => c.startsWith('has-thin-'));
+            const overlays = Array.from(tile.classList).filter(c => c.startsWith('has-'));
+            const itemLayer = tile.querySelector('.item-layer');
+            
             tile.className = 'tile';
             overlays.forEach(c => tile.classList.add(c));
+            if (itemLayer) tile.appendChild(itemLayer);
+            
             tile.innerText = '';
-            tile.innerHTML = '';
             tile.style.backgroundColor = '';
             tile.dataset.type = type;
 
             if (type === 'custom') {
                 tile.innerText = customTextInput.value;
                 tile.style.backgroundColor = customColorInput.value;
-            } else if (type === 'fixed-item' || type === 'memory') {
-                tile.classList.add(`tile-${type}`);
-                tile.innerHTML = `<div class="item-icon">${icons[type]}</div>`;
             } else if (type !== 'empty') {
                 tile.classList.add(`tile-${type}`);
             } else {
-                tile.style.backgroundColor = 'white';
+                tile.style.backgroundColor = 'transparent';
             }
         }
 
@@ -406,18 +493,51 @@
             }
         }
 
+        bgUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    gridBgLayer.style.setProperty('--bg-image', `url(${event.target.result})`);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        bgOpacityInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            gridBgLayer.style.setProperty('--bg-opacity', val);
+            opacityVal.innerText = Math.round(val * 100) + '%';
+        });
+
+        removeBgBtn.addEventListener('click', () => {
+            if (confirm("배경 이미지를 제거하시겠습니까?")) {
+                gridBgLayer.style.removeProperty('--bg-image');
+                bgUpload.value = '';
+                gridBgLayer.style.setProperty('--bg-opacity', '1');
+                bgOpacityInput.value = '1';
+                opacityVal.innerText = '100%';
+            }
+        });
+
         toolBtns.forEach(btn => btn.addEventListener('click', () => selectTool(btn.getAttribute('data-type'))));
-        clearBtn.addEventListener('click', () => { if(confirm("초기화하시겠습니까?")) { saveHistory(); initGrid(); } });
+        clearBtn.addEventListener('click', () => { if(confirm("초기화하시겠습니까?")) { saveHistory(); gridBgLayer.style.removeProperty('--bg-image'); initGrid(); } });
         undoBtn.addEventListener('click', undo);
+        
         downloadBtn.addEventListener('click', () => {
-            grid.classList.remove('editing-mode');
             previewRect.style.display = 'none';
-            html2canvas(grid, { backgroundColor: "#ffffff", scale: 2, width: 600, height: 600 }).then(canvas => {
+            html2canvas(grid, { 
+                backgroundColor: "#ffffff", 
+                scale: 3, 
+                width: 600, 
+                height: 600,
+                useCORS: true,
+                logging: false
+            }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `level-design-${Date.now()}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-                grid.classList.add('editing-mode');
             });
         });
 
