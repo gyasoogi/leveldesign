@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level Design Editor v2 - Layered</title>
+    <title>Level Design Editor v2 - Clean UI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .grid-container {
@@ -39,62 +39,56 @@
             outline: 0.1px solid rgba(0,0,0,0.05);
         }
         .active-tool {
-            outline: 3px solid #3b82f6;
+            outline: 3px solid #3b82f6 !important;
             transform: scale(1.05);
-        }
-
-        /* 얇은 벽 레이어 (의사 요소 사용) */
-        .tile::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 0;
-            border-top: 0px solid black;
             z-index: 10;
-            pointer-events: none;
         }
-        .tile::after {
+
+        /* --- 얇은 레이어 시스템 --- */
+        .tile::before, .tile::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            bottom: 0;
-            width: 0;
-            border-left: 0px solid black;
-            z-index: 11;
             pointer-events: none;
+            z-index: 20;
         }
 
-        /* 얇은 벽 활성화 상태 */
-        .has-thin-h::before { border-top-width: 4px; }
-        .has-thin-v::after { border-left-width: 4px; }
+        /* 가로 요소 (상단 테두리) */
+        .tile::before { right: 0; height: 0; }
+        .has-thin-h-wall::before { border-top: 4px solid #000; }
+        .has-thin-h-door-open::before { border-top: 5px double #000; }
+        .has-thin-h-door-locked::before { border-top: 5px double #ff4d4d; }
+        .has-thin-h-window::before { border-top: 3px dashed #666; }
 
-        /* 타일 타입별 스타일 (바닥 레이어) */
+        /* 세로 요소 (좌측 테두리) */
+        .tile::after { bottom: 0; width: 0; }
+        .has-thin-v-wall::after { border-left: 4px solid #000; }
+        .has-thin-v-door-open::after { border-left: 5px double #000; }
+        .has-thin-v-door-locked::after { border-left: 5px double #ff4d4d; }
+        .has-thin-v-window::after { border-left: 3px dashed #666; }
+
+        /* --- 타일 타입별 스타일 --- */
         .tile-shelf { background-color: #d2a679; }
         .tile-dirt { background-color: #7a5c3f; }
         .tile-wall { background-color: #000; }
-        .tile-door-can-open { border-top: 3px double #000; border-bottom: 3px double #000; }
-        .tile-door-locked { border-top: 3px double #ff6b6b; border-bottom: 3px double #ff6b6b; }
-        .tile-window { border-top: 2px dashed #666; border-bottom: 2px dashed #666; }
+        .tile-water { background-color: #778fcc; }
+        .tile-leaves { background-color: #6d7a5f; }
+        .tile-hydrangea { background-color: rgb(203, 203, 255); border: 1px dashed rgba(0,0,0,0.1); }
         
-        /* 아이템 레이어 (내부 div) */
-        .item-layer {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+        .item-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .tile-fixed-item .item-layer { background-color: #a0d8ef; }
-        .tile-memory .item-layer { background-color: #ffadad; }
+        .tile-fixed-item .item-icon { background-color: #a0d8ef; }
+        .tile-memory .item-icon { background-color: #ffadad; }
 
-        .tile-water { background-color: #778fcc; }
-        .tile-leaves { background-color: #6d7a5f; }
-
-        /* 드래그 미리보기 스타일 */
         .preview-rect {
             position: absolute;
             background-color: rgba(59, 130, 246, 0.3);
@@ -103,21 +97,31 @@
             z-index: 50;
             display: none;
         }
+
+        /* 도구 버튼 기본 스타일 통일 */
+        .tool-btn {
+            background-color: white;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+        .tool-btn:hover {
+            background-color: #f8fafc;
+        }
     </style>
 </head>
 <body class="bg-slate-50 p-8">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <header class="mb-6 flex justify-between items-end">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800">레벨 디자인 에디터 v2 (레이어형)</h1>
-                <p class="text-sm text-slate-500 mt-1">얇은 벽은 다른 타일 위에 중첩 가능 | Ctrl+Z: 실행 취소</p>
+                <h1 class="text-2xl font-bold text-slate-800">레벨 디자인 에디터 v2</h1>
+                <p class="text-sm text-slate-500 mt-1">도구 디자인 통일 | Ctrl+Z: 실행 취소</p>
             </div>
             <div class="flex gap-2 text-sm">
                 <button id="undoBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition">
                     실행 취소 (Ctrl+Z)
                 </button>
                 <button id="clearBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition text-red-500 font-semibold">
-                    초기화 (벽 채우기)
+                    전체 초기화
                 </button>
                 <button id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-md transition">
                     이미지로 저장
@@ -126,54 +130,63 @@
         </header>
 
         <div class="flex gap-8 items-start">
-            <aside class="w-72 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-6 max-h-[85vh] overflow-y-auto">
+            <aside class="w-80 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-6 max-h-[90vh] overflow-y-auto">
                 <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">지형 및 구조물</h3>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">지형 및 바닥</h3>
                     <div class="grid grid-cols-2 gap-2">
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="empty">
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="empty">
                             <div class="w-8 h-8 bg-white border border-slate-200 rounded"></div><span class="text-xs">지우개</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1 active-tool" data-type="wall">
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1 active-tool" data-type="wall">
                             <div class="w-8 h-8 bg-black rounded"></div><span class="text-xs">전체 벽</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="shelf">
-                            <div class="w-8 h-8 tile-shelf rounded"></div><span class="text-xs">선반</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="hydrangea">
+                            <div class="w-8 h-8 rounded" style="background-color: rgb(203, 203, 255);"></div><span class="text-xs">수국 구덩이</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="dirt">
-                            <div class="w-8 h-8 tile-dirt rounded"></div><span class="text-xs">흙더미</span>
-                        </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="water">
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="water">
                             <div class="w-8 h-8 tile-water rounded"></div><span class="text-xs">고인 물</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="leaves">
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="leaves">
                             <div class="w-8 h-8 tile-leaves rounded"></div><span class="text-xs">낙엽 길</span>
                         </button>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3">중첩 레이어 (얇은 벽)</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button class="tool-btn p-2 border border-blue-200 rounded-xl flex flex-col items-center gap-1 bg-blue-50" data-type="thin-wall-h">
-                            <div class="w-8 h-8 bg-white border-t-4 border-black rounded"></div><span class="text-xs">얇은 벽(가로)</span>
-                        </button>
-                        <button class="tool-btn p-2 border border-blue-200 rounded-xl flex flex-col items-center gap-1 bg-blue-50" data-type="thin-wall-v">
-                            <div class="w-8 h-8 bg-white border-l-4 border-black rounded"></div><span class="text-xs">얇은 벽(세로)</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="shelf">
+                            <div class="w-8 h-8 tile-shelf rounded"></div><span class="text-xs">선반</span>
                         </button>
                     </div>
                 </div>
 
                 <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">문 및 통로</h3>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">중첩 레이어 (가로형)</h3>
                     <div class="grid grid-cols-2 gap-2">
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="door-can-open">
-                            <div class="w-8 h-8 tile-door-can-open bg-white"></div><span class="text-xs">열리는 문</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-h-wall">
+                            <div class="w-8 h-4 border-t-4 border-black"></div><span class="text-xs">얇은 벽</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="door-locked">
-                            <div class="w-8 h-8 tile-door-locked bg-white"></div><span class="text-xs">잠긴 문</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-h-door-open">
+                            <div class="w-8 h-4 border-t-4 border-double border-black"></div><span class="text-xs">열리는 문</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="window">
-                            <div class="w-8 h-8 tile-window bg-white"></div><span class="text-xs">창문</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-h-door-locked">
+                            <div class="w-8 h-4 border-t-4 border-double border-red-500"></div><span class="text-xs">잠긴 문</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-h-window">
+                            <div class="w-8 h-4 border-t-2 border-dashed border-slate-500"></div><span class="text-xs">창문</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">중첩 레이어 (세로형)</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-v-wall">
+                            <div class="h-8 w-4 border-l-4 border-black"></div><span class="text-xs">얇은 벽</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-v-door-open">
+                            <div class="h-8 w-4 border-l-4 border-double border-black"></div><span class="text-xs">열리는 문</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-v-door-locked">
+                            <div class="h-8 w-4 border-l-4 border-double border-red-500"></div><span class="text-xs">잠긴 문</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="thin-v-window">
+                            <div class="h-8 w-4 border-l-2 border-dashed border-slate-500"></div><span class="text-xs">창문</span>
                         </button>
                     </div>
                 </div>
@@ -181,11 +194,11 @@
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">아이템</h3>
                     <div class="grid grid-cols-2 gap-2">
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="fixed-item">
-                            <div class="w-8 h-8 tile-fixed-item"></div><span class="text-xs">확정 아이템</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="fixed-item">
+                            <div class="w-8 h-8 bg-[#a0d8ef] rounded flex items-center justify-center text-[10px]">★</div><span class="text-xs">확정 아이템</span>
                         </button>
-                        <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="memory">
-                            <div class="w-8 h-8 tile-memory"></div><span class="text-xs">기억 조각</span>
+                        <button class="tool-btn p-2 rounded-xl flex flex-col items-center gap-1" data-type="memory">
+                            <div class="w-8 h-8 bg-[#ffadad] rounded flex items-center justify-center text-[10px]">♥</div><span class="text-xs">기억 조각</span>
                         </button>
                     </div>
                 </div>
@@ -193,13 +206,13 @@
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">텍스트 타일 설정</h3>
                     <div class="space-y-2">
-                        <input type="text" id="customText" placeholder="내용" class="w-full border p-2 text-sm rounded-lg" value="아이템">
+                        <input type="text" id="customText" placeholder="내용" class="w-full border p-2 text-sm rounded-lg" value="이벤트">
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-slate-500">배경색:</span>
-                            <input type="color" id="customColor" value="#f1f5f9" class="h-8 w-12 border-none p-0 cursor-pointer rounded">
+                            <input type="color" id="customColor" value="#fef3c7" class="h-8 w-12 border-none p-0 cursor-pointer rounded">
                         </div>
-                        <button class="tool-btn w-full p-2 border rounded-lg bg-slate-50 text-xs font-bold" data-type="custom">
-                            텍스트 타일 선택
+                        <button class="tool-btn w-full p-2 rounded-lg bg-slate-50 text-xs font-bold" data-type="custom">
+                            텍스트 타일 도구 선택
                         </button>
                     </div>
                 </div>
@@ -232,17 +245,21 @@
         
         let history = [];
         const MAX_HISTORY = 50;
-
         const GRID_SIZE = 15;
         const TILE_SIZE = 40;
+
+        const icons = {
+            'fixed-item': `<svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
+            'memory': `<svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`
+        };
 
         function saveHistory() {
             const state = tiles.map(tile => ({
                 type: tile.dataset.type,
-                thinH: tile.classList.contains('has-thin-h'),
-                thinV: tile.classList.contains('has-thin-v'),
+                overlays: Array.from(tile.classList).filter(c => c.startsWith('has-thin-')),
                 text: tile.innerText,
-                bgColor: tile.style.backgroundColor
+                bgColor: tile.style.backgroundColor,
+                html: tile.innerHTML
             }));
             history.push(state);
             if (history.length > MAX_HISTORY) history.shift();
@@ -253,7 +270,15 @@
             const prevState = history.pop();
             tiles.forEach((tile, index) => {
                 const s = prevState[index];
-                restoreTileState(tile, s);
+                tile.className = 'tile';
+                s.overlays.forEach(c => tile.classList.add(c));
+                tile.dataset.type = s.type;
+                tile.innerText = s.text;
+                tile.style.backgroundColor = s.bgColor;
+                if (s.html) tile.innerHTML = s.html;
+                if (s.type !== 'custom' && !s.html.includes('svg')) {
+                    if (s.type !== 'empty') tile.classList.add(`tile-${s.type}`);
+                }
             });
         }
 
@@ -269,7 +294,6 @@
                     tile.classList.add('tile');
                     tile.dataset.x = x;
                     tile.dataset.y = y;
-                    
                     setTileBaseState(tile, 'wall');
                     
                     tile.addEventListener('mousedown', (e) => {
@@ -284,11 +308,7 @@
                             selectTool(tile.dataset.type, tile.innerText, tile.style.backgroundColor);
                         }
                     });
-
-                    tile.addEventListener('mouseenter', () => {
-                        if (isDragging) updatePreview(startX, startY, x, y);
-                    });
-
+                    tile.addEventListener('mouseenter', () => { if (isDragging) updatePreview(startX, startY, x, y); });
                     tile.addEventListener('contextmenu', (e) => e.preventDefault());
                     grid.appendChild(tile);
                     tiles.push(tile);
@@ -301,28 +321,15 @@
                 isDragging = false;
                 const targetX = e.target.dataset ? parseInt(e.target.dataset.x ?? startX) : startX;
                 const targetY = e.target.dataset ? parseInt(e.target.dataset.y ?? startY) : startY;
-                const rect = getRect(startX, startY, targetX, targetY);
-                applyToolToRect(rect);
+                applyToolToRect(getRect(startX, startY, targetX, targetY));
                 previewRect.style.display = 'none';
             }
         });
 
-        window.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'z') {
-                e.preventDefault();
-                undo();
-            }
-        });
-
-        undoBtn.addEventListener('click', undo);
+        window.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } });
 
         function getRect(x1, y1, x2, y2) {
-            return {
-                left: Math.min(x1, x2),
-                top: Math.min(y1, y2),
-                right: Math.max(x1, x2),
-                bottom: Math.max(y1, y2)
-            };
+            return { left: Math.min(x1, x2), top: Math.min(y1, y2), right: Math.max(x1, x2), bottom: Math.max(y1, y2) };
         }
 
         function updatePreview(x1, y1, x2, y2) {
@@ -339,10 +346,8 @@
                 const tx = parseInt(tile.dataset.x);
                 const ty = parseInt(tile.dataset.y);
                 if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
-                    if (currentTool === 'thin-wall-h') {
-                        tile.classList.toggle('has-thin-h');
-                    } else if (currentTool === 'thin-wall-v') {
-                        tile.classList.toggle('has-thin-v');
+                    if (currentTool.startsWith('thin-')) {
+                        toggleOverlay(tile, currentTool);
                     } else {
                         setTileBaseState(tile, currentTool);
                     }
@@ -350,61 +355,36 @@
             });
         }
 
-        function setTileBaseState(tile, type) {
-            // 레이어 기반이므로 얇은 벽 클래스는 유지
-            const hasThinH = tile.classList.contains('has-thin-h');
-            const hasThinV = tile.classList.contains('has-thin-v');
-            
-            tile.className = 'tile';
-            if (hasThinH) tile.classList.add('has-thin-h');
-            if (hasThinV) tile.classList.add('has-thin-v');
-
-            tile.innerText = '';
-            tile.style.backgroundColor = '';
-            tile.dataset.type = type;
-
-            switch (type) {
-                case 'wall': tile.classList.add('tile-wall'); break;
-                case 'shelf': tile.classList.add('tile-shelf'); break;
-                case 'dirt': tile.classList.add('tile-dirt'); break;
-                case 'water': tile.classList.add('tile-water'); break;
-                case 'leaves': tile.classList.add('tile-leaves'); break;
-                case 'door-can-open': tile.classList.add('tile-door-can-open'); break;
-                case 'door-locked': tile.classList.add('tile-door-locked'); break;
-                case 'window': tile.classList.add('tile-window'); break;
-                case 'fixed-item': 
-                    tile.classList.add('tile-fixed-item'); 
-                    tile.innerHTML += '<div class="item-layer"></div>';
-                    break;
-                case 'memory': 
-                    tile.classList.add('tile-memory'); 
-                    tile.innerHTML += '<div class="item-layer"></div>';
-                    break;
-                case 'custom':
-                    tile.innerText = customTextInput.value;
-                    tile.style.backgroundColor = customColorInput.value;
-                    break;
-                case 'empty':
-                default:
-                    tile.style.backgroundColor = 'white';
-                    break;
+        function toggleOverlay(tile, tool) {
+            const prefix = tool.startsWith('thin-h') ? 'has-thin-h-' : 'has-thin-v-';
+            const suffix = tool.replace('thin-h-', '').replace('thin-v-', '');
+            const className = prefix + suffix;
+            const currentOverlays = Array.from(tile.classList).filter(c => c.startsWith(prefix));
+            currentOverlays.forEach(c => tile.classList.remove(c));
+            if (!currentOverlays.includes(className)) {
+                tile.classList.add(className);
             }
         }
 
-        function restoreTileState(tile, s) {
+        function setTileBaseState(tile, type) {
+            const overlays = Array.from(tile.classList).filter(c => c.startsWith('has-thin-'));
             tile.className = 'tile';
-            if (s.thinH) tile.classList.add('has-thin-h');
-            if (s.thinV) tile.classList.add('has-thin-v');
-            tile.innerText = s.text;
-            tile.style.backgroundColor = s.bgColor;
-            tile.dataset.type = s.type;
+            overlays.forEach(c => tile.classList.add(c));
+            tile.innerText = '';
+            tile.innerHTML = '';
+            tile.style.backgroundColor = '';
+            tile.dataset.type = type;
 
-            // 특정 타입에 따른 렌더링 복구
-            if (s.type === 'fixed-item' || s.type === 'memory') {
-                tile.classList.add(`tile-${s.type}`);
-                tile.innerHTML = '<div class="item-layer"></div>';
-            } else if (s.type !== 'empty' && s.type !== 'custom') {
-                tile.classList.add(`tile-${s.type}`);
+            if (type === 'custom') {
+                tile.innerText = customTextInput.value;
+                tile.style.backgroundColor = customColorInput.value;
+            } else if (type === 'fixed-item' || type === 'memory') {
+                tile.classList.add(`tile-${type}`);
+                tile.innerHTML = `<div class="item-icon">${icons[type]}</div>`;
+            } else if (type !== 'empty') {
+                tile.classList.add(`tile-${type}`);
+            } else {
+                tile.style.backgroundColor = 'white';
             }
         }
 
@@ -414,39 +394,22 @@
                 if (btn.getAttribute('data-type') === type) btn.classList.add('active-tool');
             });
             currentTool = type;
-            if (type === 'custom') {
-                if (text) customTextInput.value = text;
-                if (color) {
-                    if (color.startsWith('rgb')) {
-                        const rgb = color.match(/\d+/g);
-                        const hex = "#" + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1);
-                        customColorInput.value = hex;
-                    }
+            if (type === 'custom' && text) {
+                customTextInput.value = text;
+                if (color.startsWith('rgb')) {
+                    const rgb = color.match(/\d+/g);
+                    customColorInput.value = "#" + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1);
                 }
             }
         }
 
-        toolBtns.forEach(btn => {
-            btn.addEventListener('click', () => selectTool(btn.getAttribute('data-type')));
-        });
-
-        clearBtn.addEventListener('click', () => {
-            if(confirm("모든 타일을 초기화하시겠습니까? (얇은 벽 포함)")) {
-                saveHistory();
-                initGrid();
-            }
-        });
-
+        toolBtns.forEach(btn => btn.addEventListener('click', () => selectTool(btn.getAttribute('data-type'))));
+        clearBtn.addEventListener('click', () => { if(confirm("초기화하시겠습니까?")) { saveHistory(); initGrid(); } });
+        undoBtn.addEventListener('click', undo);
         downloadBtn.addEventListener('click', () => {
             grid.classList.remove('editing-mode');
             previewRect.style.display = 'none';
-            
-            html2canvas(grid, {
-                backgroundColor: "#ffffff",
-                scale: 2,
-                width: 600,
-                height: 600
-            }).then(canvas => {
+            html2canvas(grid, { backgroundColor: "#ffffff", scale: 2, width: 600, height: 600 }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `level-design-${Date.now()}.png`;
                 link.href = canvas.toDataURL("image/png");
