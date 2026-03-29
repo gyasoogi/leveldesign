@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level Design Editor v2 - Final</title>
+    <title>Level Design Editor v2 - Layered</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .grid-container {
@@ -12,8 +12,8 @@
             grid-template-rows: repeat(15, 40px);
             background-color: #fff;
             border: 2px solid #000;
-            width: 600px; /* 15 * 40px */
-            height: 600px; /* 15 * 40px */
+            width: 600px;
+            height: 600px;
             gap: 0;
             position: relative;
             box-sizing: content-box;
@@ -43,15 +43,54 @@
             transform: scale(1.05);
         }
 
-        /* 타일 타입별 스타일 */
+        /* 얇은 벽 레이어 (의사 요소 사용) */
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 0;
+            border-top: 0px solid black;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .tile::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 0;
+            border-left: 0px solid black;
+            z-index: 11;
+            pointer-events: none;
+        }
+
+        /* 얇은 벽 활성화 상태 */
+        .has-thin-h::before { border-top-width: 4px; }
+        .has-thin-v::after { border-left-width: 4px; }
+
+        /* 타일 타입별 스타일 (바닥 레이어) */
         .tile-shelf { background-color: #d2a679; }
         .tile-dirt { background-color: #7a5c3f; }
         .tile-wall { background-color: #000; }
         .tile-door-can-open { border-top: 3px double #000; border-bottom: 3px double #000; }
         .tile-door-locked { border-top: 3px double #ff6b6b; border-bottom: 3px double #ff6b6b; }
         .tile-window { border-top: 2px dashed #666; border-bottom: 2px dashed #666; }
-        .tile-fixed-item { background-color: #a0d8ef; border-radius: 8px; margin: 2px; width: 36px; height: 36px; }
-        .tile-memory { background-color: #ffadad; border-radius: 8px; margin: 2px; width: 36px; height: 36px; }
+        
+        /* 아이템 레이어 (내부 div) */
+        .item-layer {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tile-fixed-item .item-layer { background-color: #a0d8ef; }
+        .tile-memory .item-layer { background-color: #ffadad; }
+
         .tile-water { background-color: #778fcc; }
         .tile-leaves { background-color: #6d7a5f; }
 
@@ -70,21 +109,23 @@
     <div class="max-w-5xl mx-auto">
         <header class="mb-6 flex justify-between items-end">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800">레벨 디자인 에디터</h1>
-                <p class="text-sm text-slate-500 mt-1">26-03-29</p>
+                <h1 class="text-2xl font-bold text-slate-800">레벨 디자인 에디터 v2 (레이어형)</h1>
+                <p class="text-sm text-slate-500 mt-1">얇은 벽은 다른 타일 위에 중첩 가능 | Ctrl+Z: 실행 취소</p>
             </div>
-            <div class="flex gap-2">
-                <button id="clearBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-lg text-sm transition text-red-500 font-semibold">
-                    벽으로 가득 채우기 (초기화)
+            <div class="flex gap-2 text-sm">
+                <button id="undoBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition">
+                    실행 취소 (Ctrl+Z)
                 </button>
-                <button id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-md transition">
+                <button id="clearBtn" class="bg-white border border-slate-300 hover:bg-slate-100 px-3 py-2 rounded-lg transition text-red-500 font-semibold">
+                    초기화 (벽 채우기)
+                </button>
+                <button id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-md transition">
                     이미지로 저장
                 </button>
             </div>
         </header>
 
         <div class="flex gap-8 items-start">
-            <!-- 도구 상자 -->
             <aside class="w-72 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-6 max-h-[85vh] overflow-y-auto">
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">지형 및 구조물</h3>
@@ -93,7 +134,7 @@
                             <div class="w-8 h-8 bg-white border border-slate-200 rounded"></div><span class="text-xs">지우개</span>
                         </button>
                         <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1 active-tool" data-type="wall">
-                            <div class="w-8 h-8 bg-black rounded"></div><span class="text-xs">벽</span>
+                            <div class="w-8 h-8 bg-black rounded"></div><span class="text-xs">전체 벽</span>
                         </button>
                         <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="shelf">
                             <div class="w-8 h-8 tile-shelf rounded"></div><span class="text-xs">선반</span>
@@ -106,6 +147,18 @@
                         </button>
                         <button class="tool-btn p-2 border rounded-xl flex flex-col items-center gap-1" data-type="leaves">
                             <div class="w-8 h-8 tile-leaves rounded"></div><span class="text-xs">낙엽 길</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3">중첩 레이어 (얇은 벽)</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="tool-btn p-2 border border-blue-200 rounded-xl flex flex-col items-center gap-1 bg-blue-50" data-type="thin-wall-h">
+                            <div class="w-8 h-8 bg-white border-t-4 border-black rounded"></div><span class="text-xs">얇은 벽(가로)</span>
+                        </button>
+                        <button class="tool-btn p-2 border border-blue-200 rounded-xl flex flex-col items-center gap-1 bg-blue-50" data-type="thin-wall-v">
+                            <div class="w-8 h-8 bg-white border-l-4 border-black rounded"></div><span class="text-xs">얇은 벽(세로)</span>
                         </button>
                     </div>
                 </div>
@@ -146,7 +199,7 @@
                             <input type="color" id="customColor" value="#f1f5f9" class="h-8 w-12 border-none p-0 cursor-pointer rounded">
                         </div>
                         <button class="tool-btn w-full p-2 border rounded-lg bg-slate-50 text-xs font-bold" data-type="custom">
-                            텍스트 타일 도구 선택
+                            텍스트 타일 선택
                         </button>
                     </div>
                 </div>
@@ -154,7 +207,6 @@
 
             <main class="flex-1 flex justify-center py-4 bg-slate-200 rounded-3xl overflow-hidden shadow-inner border-8 border-white relative min-h-[700px]">
                 <div id="grid" class="grid-container editing-mode">
-                    <!-- 타일들이 생성됨 -->
                     <div id="preview" class="preview-rect"></div>
                 </div>
             </main>
@@ -168,6 +220,7 @@
         const toolBtns = document.querySelectorAll('.tool-btn');
         const downloadBtn = document.getElementById('downloadBtn');
         const clearBtn = document.getElementById('clearBtn');
+        const undoBtn = document.getElementById('undoBtn');
         const customTextInput = document.getElementById('customText');
         const customColorInput = document.getElementById('customColor');
 
@@ -176,13 +229,35 @@
         let startX = 0;
         let startY = 0;
         let tiles = [];
+        
+        let history = [];
+        const MAX_HISTORY = 50;
 
         const GRID_SIZE = 15;
         const TILE_SIZE = 40;
 
-        // 그리드 초기화 (기본 벽 상태)
+        function saveHistory() {
+            const state = tiles.map(tile => ({
+                type: tile.dataset.type,
+                thinH: tile.classList.contains('has-thin-h'),
+                thinV: tile.classList.contains('has-thin-v'),
+                text: tile.innerText,
+                bgColor: tile.style.backgroundColor
+            }));
+            history.push(state);
+            if (history.length > MAX_HISTORY) history.shift();
+        }
+
+        function undo() {
+            if (history.length === 0) return;
+            const prevState = history.pop();
+            tiles.forEach((tile, index) => {
+                const s = prevState[index];
+                restoreTileState(tile, s);
+            });
+        }
+
         function initGrid() {
-            // 프리뷰 요소를 제외하고 그리드 내부 비우기
             const previewEl = document.getElementById('preview');
             grid.innerHTML = '';
             grid.appendChild(previewEl);
@@ -195,25 +270,23 @@
                     tile.dataset.x = x;
                     tile.dataset.y = y;
                     
-                    // 초기 상태: 벽
-                    setTileState(tile, 'wall');
+                    setTileBaseState(tile, 'wall');
                     
                     tile.addEventListener('mousedown', (e) => {
-                        if (e.button === 0) { // 좌클릭
+                        if (e.button === 0) {
+                            saveHistory();
                             isDragging = true;
                             startX = x;
                             startY = y;
                             updatePreview(x, y, x, y);
-                        } else if (e.button === 1) { // 휠클릭 (스포이드)
+                        } else if (e.button === 1) {
                             e.preventDefault();
                             selectTool(tile.dataset.type, tile.innerText, tile.style.backgroundColor);
                         }
                     });
 
                     tile.addEventListener('mouseenter', () => {
-                        if (isDragging) {
-                            updatePreview(startX, startY, x, y);
-                        }
+                        if (isDragging) updatePreview(startX, startY, x, y);
                     });
 
                     tile.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -226,15 +299,22 @@
         window.addEventListener('mouseup', (e) => {
             if (isDragging && e.button === 0) {
                 isDragging = false;
-                // 타겟의 좌표를 가져오거나 없으면 시작 좌표 사용
                 const targetX = e.target.dataset ? parseInt(e.target.dataset.x ?? startX) : startX;
                 const targetY = e.target.dataset ? parseInt(e.target.dataset.y ?? startY) : startY;
-                
                 const rect = getRect(startX, startY, targetX, targetY);
                 applyToolToRect(rect);
                 previewRect.style.display = 'none';
             }
         });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        undoBtn.addEventListener('click', undo);
 
         function getRect(x1, y1, x2, y2) {
             return {
@@ -259,13 +339,26 @@
                 const tx = parseInt(tile.dataset.x);
                 const ty = parseInt(tile.dataset.y);
                 if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
-                    setTileState(tile, currentTool);
+                    if (currentTool === 'thin-wall-h') {
+                        tile.classList.toggle('has-thin-h');
+                    } else if (currentTool === 'thin-wall-v') {
+                        tile.classList.toggle('has-thin-v');
+                    } else {
+                        setTileBaseState(tile, currentTool);
+                    }
                 }
             });
         }
 
-        function setTileState(tile, type) {
+        function setTileBaseState(tile, type) {
+            // 레이어 기반이므로 얇은 벽 클래스는 유지
+            const hasThinH = tile.classList.contains('has-thin-h');
+            const hasThinV = tile.classList.contains('has-thin-v');
+            
             tile.className = 'tile';
+            if (hasThinH) tile.classList.add('has-thin-h');
+            if (hasThinV) tile.classList.add('has-thin-v');
+
             tile.innerText = '';
             tile.style.backgroundColor = '';
             tile.dataset.type = type;
@@ -279,8 +372,14 @@
                 case 'door-can-open': tile.classList.add('tile-door-can-open'); break;
                 case 'door-locked': tile.classList.add('tile-door-locked'); break;
                 case 'window': tile.classList.add('tile-window'); break;
-                case 'fixed-item': tile.classList.add('tile-fixed-item'); break;
-                case 'memory': tile.classList.add('tile-memory'); break;
+                case 'fixed-item': 
+                    tile.classList.add('tile-fixed-item'); 
+                    tile.innerHTML += '<div class="item-layer"></div>';
+                    break;
+                case 'memory': 
+                    tile.classList.add('tile-memory'); 
+                    tile.innerHTML += '<div class="item-layer"></div>';
+                    break;
                 case 'custom':
                     tile.innerText = customTextInput.value;
                     tile.style.backgroundColor = customColorInput.value;
@@ -289,6 +388,23 @@
                 default:
                     tile.style.backgroundColor = 'white';
                     break;
+            }
+        }
+
+        function restoreTileState(tile, s) {
+            tile.className = 'tile';
+            if (s.thinH) tile.classList.add('has-thin-h');
+            if (s.thinV) tile.classList.add('has-thin-v');
+            tile.innerText = s.text;
+            tile.style.backgroundColor = s.bgColor;
+            tile.dataset.type = s.type;
+
+            // 특정 타입에 따른 렌더링 복구
+            if (s.type === 'fixed-item' || s.type === 'memory') {
+                tile.classList.add(`tile-${s.type}`);
+                tile.innerHTML = '<div class="item-layer"></div>';
+            } else if (s.type !== 'empty' && s.type !== 'custom') {
+                tile.classList.add(`tile-${s.type}`);
             }
         }
 
@@ -301,7 +417,6 @@
             if (type === 'custom') {
                 if (text) customTextInput.value = text;
                 if (color) {
-                    // RGB to HEX 변환 (스포이드용)
                     if (color.startsWith('rgb')) {
                         const rgb = color.match(/\d+/g);
                         const hex = "#" + ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1);
@@ -316,22 +431,19 @@
         });
 
         clearBtn.addEventListener('click', () => {
-            if(confirm("모든 타일을 벽으로 다시 채우시겠습니까?")) {
+            if(confirm("모든 타일을 초기화하시겠습니까? (얇은 벽 포함)")) {
+                saveHistory();
                 initGrid();
             }
         });
 
         downloadBtn.addEventListener('click', () => {
-            // 저장 전 UI 정리
             grid.classList.remove('editing-mode');
             previewRect.style.display = 'none';
             
-            // 캡처 실행
             html2canvas(grid, {
                 backgroundColor: "#ffffff",
                 scale: 2,
-                logging: false,
-                useCORS: true,
                 width: 600,
                 height: 600
             }).then(canvas => {
@@ -339,13 +451,10 @@
                 link.download = `level-design-${Date.now()}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-                
-                // 저장 후 가이드라인 복구
                 grid.classList.add('editing-mode');
             });
         });
 
-        // 초기 실행
         initGrid();
     </script>
 </body>
